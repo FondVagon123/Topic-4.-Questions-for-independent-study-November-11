@@ -1,0 +1,73 @@
+PS E:\Проекты пайтон\Tema14Nov11> python keiretsu_simulation_analysis.py
+--- ЕТАП 1: ПОЧАТОК СИМУЛЯЦІЇ ---
+Створення 1253 вузлів...     
+Вузли успішно створено.      
+Створення зв'язків (ребер)...
+--- СИМУЛЯЦІЯ ЗАВЕРШЕНА ---
+Тип графу: <class 'networkx.classes.graph.Graph'>
+Кількість вузлів: 1253
+Кількість ребер: 5463
+
+--- ЕТАП 2: ҐРУНТОВНИЙ АНАЛІЗ МЕРЕЖІ ---
+
+[Початок] Розрахунок Центральності (Degree, Betweenness)...
+[Завершено] Розрахунок Центральності.
+
+--- ТОП-10 ЗА КІЛЬКІСТЮ ЗВ'ЯЗКІВ ---
+|             |   Degree |   Betweenness | Type     |
+|:------------|---------:|--------------:|:---------|
+| Toyota_OEM  |   0.1597 |        0.1545 | OEM      |
+| Honda_OEM   |   0.1198 |        0.0946 | OEM      |
+| Nissan_OEM  |   0.1198 |        0.0887 | OEM      |
+| Critical_49 |   0.0399 |        0.0101 | Critical |
+| Critical_46 |   0.0399 |        0.0113 | Critical |
+| Critical_45 |   0.0399 |        0.0100 | Critical |
+| Critical_32 |   0.0399 |        0.0109 | Critical |
+| Critical_31 |   0.0399 |        0.0114 | Critical |
+| Critical_30 |   0.0399 |        0.0117 | Critical |
+| Critical_29 |   0.0399 |        0.0106 | Critical |
+
+--- ТОП-10 ЗА КРИТИЧНІСТЮ ---
+|             |   Degree |   Betweenness | Type     |
+|:------------|---------:|--------------:|:---------|
+| Toyota_OEM  |   0.1597 |        0.1545 | OEM      |
+| Honda_OEM   |   0.1198 |        0.0946 | OEM      |
+| Nissan_OEM  |   0.1198 |        0.0887 | OEM      |
+| Critical_33 |   0.0399 |        0.0123 | Critical |
+| Critical_2  |   0.0399 |        0.0123 | Critical |
+| Critical_4  |   0.0399 |        0.0120 | Critical |
+| Critical_27 |   0.0399 |        0.0119 | Critical |
+| Critical_30 |   0.0399 |        0.0117 | Critical |
+| Critical_26 |   0.0399 |        0.0115 | Critical |
+| Critical_31 |   0.0399 |        0.0114 | Critical |
+
+[Звіт збережено у файл: network_centrality_report.csv]
+
+[Початок] Розрахунок Спільнот...
+[Завершено] Розрахунок Спільнот.
+
+Алгоритм виявив 62 спільнот.
+Community  Type     
+0          Market_T2    91
+           Toyota_T1    83
+           Critical     11
+           Honda_T1      8
+           Nissan_T1     5
+                        ..
+57         Nissan_T1     2
+58         Market_T2     1
+59         Market_T2     1
+60         Market_T2     1
+61         Market_T2     1
+Name: count, Length: 115, dtype: int64
+
+--- ЕТАП 3: АНАЛІЗ СТІЙКОСТІ ---
+
+--- Сценарій 1 (Видалення T_T1_0) ---
+Мережа не стійка. Компонент: 49
+
+--- Сценарій 2 (Видалення критичних постачальників) ---
+Мережа не стійка. Компонент: 49
+
+--- АНАЛІЗ ЗАВЕРШЕНО ---
+PS E:\Проекты пайтон\Tema14Nov11> 
