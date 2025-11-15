@@ -1,0 +1,148 @@
+import networkx as nx
+import pandas as pd
+import matplotlib.pyplot as plt
+import random
+from networkx.algorithms import community
+
+NUM_T1_TOYOTA = 200
+NUM_T1_HONDA = 150
+NUM_T1_NISSAN = 150
+NUM_CRITICAL_SUPPLIERS = 50
+NUM_MARKET_T2 = 700
+
+def create_keiretsu_simulation():
+    print("--- ЕТАП 1: ПОЧАТОК СИМУЛЯЦІЇ ---")
+    G = nx.Graph()
+
+    print(f"Створення {3 + NUM_T1_TOYOTA + NUM_T1_HONDA + NUM_T1_NISSAN + NUM_CRITICAL_SUPPLIERS + NUM_MARKET_T2} вузлів...")
+    
+    oems = ['Toyota_OEM', 'Honda_OEM', 'Nissan_OEM']
+    G.add_nodes_from(oems, type='OEM')
+
+    keiretsu_tier1 = {
+        'Toyota': [f'T_T1_{i}' for i in range(NUM_T1_TOYOTA)],
+        'Honda': [f'H_T1_{i}' for i in range(NUM_T1_HONDA)],
+        'Nissan': [f'N_T1_{i}' for i in range(NUM_T1_NISSAN)]
+    }
+    for brand, nodes in keiretsu_tier1.items():
+        G.add_nodes_from(nodes, type=f'{brand}_T1')
+
+    critical_suppliers = [f'Critical_{i}' for i in range(NUM_CRITICAL_SUPPLIERS)]
+    G.add_nodes_from(critical_suppliers, type='Critical')
+
+    market_tier2 = [f'Market_T2_{i}' for i in range(NUM_MARKET_T2)]
+    G.add_nodes_from(market_tier2, type='Market_T2')
+
+    print("Вузли успішно створено.")
+    print("Створення зв'язків (ребер)...")
+    
+    for node_t in keiretsu_tier1['Toyota']: G.add_edge('Toyota_OEM', node_t)
+    for node_h in keiretsu_tier1['Honda']: G.add_edge('Honda_OEM', node_h)
+    for node_n in keiretsu_tier1['Nissan']: G.add_edge('Nissan_OEM', node_n)
+
+    def add_internal_density(graph, nodes, probability):
+        for i, node1 in enumerate(nodes):
+            for j, node2 in enumerate(nodes):
+                if i < j and random.random() < probability:
+                    graph.add_edge(node1, node2)
+    
+    add_internal_density(G, keiretsu_tier1['Toyota'], 0.01)
+    add_internal_density(G, keiretsu_tier1['Honda'], 0.01)
+    add_internal_density(G, keiretsu_tier1['Nissan'], 0.01)
+
+    all_tier1_nodes = (
+        keiretsu_tier1['Toyota'] + keiretsu_tier1['Honda'] + keiretsu_tier1['Nissan']
+    )
+    for t1_supplier in all_tier1_nodes:
+        t2_suppliers = random.sample(market_tier2, random.randint(3, 5))
+        for t2 in t2_suppliers:
+            G.add_edge(t1_supplier, t2)
+    
+    for crit in critical_suppliers:
+        linked_t1 = random.sample(all_tier1_nodes, int(len(all_tier1_nodes) * 0.1))
+        for t1 in linked_t1:
+            G.add_edge(crit, t1)
+
+    print("--- СИМУЛЯЦІЯ ЗАВЕРШЕНА ---")
+    
+    print(f"Тип графу: {type(G)}")
+    print(f"Кількість вузлів: {G.number_of_nodes()}")
+    print(f"Кількість ребер: {G.number_of_edges()}")
+
+    return G, critical_suppliers, keiretsu_tier1
+
+
+def analyze_network(G, critical_suppliers, keiretsu_tier1):
+    print("\n--- ЕТАП 2: ҐРУНТОВНИЙ АНАЛІЗ МЕРЕЖІ ---")
+    print("\n[Початок] Розрахунок Центральності (Degree, Betweenness)...")
+    
+    degree_centrality = nx.degree_centrality(G)
+    betweenness_centrality = nx.betweenness_centrality(G)
+    
+    print("[Завершено] Розрахунок Центральності.")
+
+    df = pd.DataFrame.from_dict({
+        'Degree': degree_centrality,
+        'Betweenness': betweenness_centrality
+    })
+    node_types = nx.get_node_attributes(G, 'type')
+    df['Type'] = df.index.map(node_types)
+
+    print("\n--- ТОП-10 ЗА КІЛЬКІСТЮ ЗВ'ЯЗКІВ ---")
+    print(df.sort_values(by='Degree', ascending=False).head(10).to_markdown(floatfmt=".4f"))
+
+    print("\n--- ТОП-10 ЗА КРИТИЧНІСТЮ ---")
+    print(df.sort_values(by='Betweenness', ascending=False).head(10).to_markdown(floatfmt=".4f"))
+
+    report_filename = "network_centrality_report.csv"
+    try:
+        df.sort_values(by='Betweenness', ascending=False).to_csv(report_filename)
+        print(f"\n[Звіт збережено у файл: {report_filename}]")
+    except Exception as e:
+        print(f"\n[Не вдалося зберегти звіт: {e}]")
+
+    print("\n[Початок] Розрахунок Спільнот...")
+    
+    try:
+        communities_set = community.louvain_communities(G, seed=42)
+        print(f"[Завершено] Розрахунок Спільнот.")
+        print(f"\nАлгоритм виявив {len(communities_set)} спільнот.")
+
+        df['Community'] = 0
+        for i, comm_nodes in enumerate(communities_set):
+            for node in comm_nodes:
+                if node in df.index:
+                    df.loc[node, 'Community'] = i
+
+        community_analysis = df.groupby('Community')['Type'].value_counts()
+        print(community_analysis)
+
+    except Exception as e:
+        print(f"\n[Помилка під час аналізу спільнот: {e}]")
+
+    print("\n--- ЕТАП 3: АНАЛІЗ СТІЙКОСТІ ---")
+
+    G_test_1 = G.copy()
+    node_to_remove = keiretsu_tier1['Toyota'][0]
+    G_test_1.remove_node(node_to_remove)
+    print(f"\n--- Сценарій 1 (Видалення {node_to_remove}) ---")
+    if nx.is_connected(G_test_1):
+        print("Мережа стійка.")
+    else:
+        print(f"Мережа не стійка. Компонент: {nx.number_connected_components(G_test_1)}")
+
+    G_test_2 = G.copy()
+    G_test_2.remove_nodes_from(critical_suppliers)
+    print(f"\n--- Сценарій 2 (Видалення критичних постачальників) ---")
+    if nx.is_connected(G_test_2):
+        print("Мережа стійка.")
+    else:
+        print(f"Мережа не стійка. Компонент: {nx.number_connected_components(G_test_2)}")
+
+    print("\n--- АНАЛІЗ ЗАВЕРШЕНО ---")
+
+
+if __name__ == "__main__":
+    simulated_graph, critical_nodes, t1_nodes = create_keiretsu_simulation()
+    if simulated_graph:
+        analyze_network(simulated_graph, critical_nodes, t1_nodes)
